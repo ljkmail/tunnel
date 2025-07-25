@@ -9,4 +9,4 @@ matplotlib
 python-dotenv
 httpx
 openai
-git+https://github.com/jacobgil/pytorch-grad-cam.git@v1.3.9
+git+https://github.com/jacobgil/pytorch-grad-cam.git@master
