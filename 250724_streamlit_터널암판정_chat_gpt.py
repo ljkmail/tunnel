@@ -2,7 +2,6 @@ import streamlit as st
 import os
 import torch
 import numpy as np
-import matplotlib.pyplot as plt
 from PIL import Image
 from torchvision import transforms
 from pytorch_grad_cam import GradCAM
