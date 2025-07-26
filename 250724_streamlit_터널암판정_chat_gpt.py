@@ -87,7 +87,7 @@ def analyze_with_gpt4o(original_img: Image.Image, cam_img: Image.Image, label_id
     return response.choices[0].message.content
 
 # Streamlit UI
-st.title("터널 안전성 인공지능 분류 서비스")
+st.title("터널 안전성 AI🤖 분류 서비스")
 
 uploaded_file = st.file_uploader("터널 이미지를 업로드하세요", type=["jpg", "png", "jpeg"])
 
