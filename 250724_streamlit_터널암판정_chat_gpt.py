@@ -25,7 +25,7 @@ client = OpenAI(
 # 모델 로드
 @st.cache_resource
 def load_model():
-    model = torch.load("./model_convnext_tiny.pth", weights_only = False, map_location=torch.device('cpu') )
+    model = torch.load("./model_convnext_tiny2.pth", weights_only = False, map_location=torch.device('cpu') )
     model.eval()
     return model
 
@@ -70,7 +70,7 @@ def analyze_with_gpt4o(original_img: Image.Image, cam_img: Image.Image, label_id
     )
 
     response = client.chat.completions.create(
-        model="gpt-4o",
+        model="o4-mini",
         messages=[
             {"role": "system", "content": "당신은 지질공학 및 암반공학 전문가입니다."},
             {
@@ -82,7 +82,7 @@ def analyze_with_gpt4o(original_img: Image.Image, cam_img: Image.Image, label_id
                 ]
             }
         ],
-        temperature=0.4
+        temperature=1
     )
     return response.choices[0].message.content
 
@@ -130,7 +130,7 @@ if uploaded_file:
     col2.image(cam_image, caption="Grad-CAM 시각화", use_container_width=True)
 
     # GPT-4o 분석 실행
-    with st.spinner("GPT-4o 분석 중..."):
+    with st.spinner("o4-mini 분석 중..."):
         cam_pil = Image.fromarray(cam_image).resize((336, 336))
         original_resized = image.resize((336, 336))
         result = analyze_with_gpt4o(original_resized, cam_pil, pred, rmr_class_name)
