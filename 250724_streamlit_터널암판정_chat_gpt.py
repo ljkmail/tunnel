@@ -136,10 +136,11 @@ if uploaded_file:
         result = analyze_with_gpt4o(original_resized, cam_pil, pred, rmr_class_name)
         st.success("✅ 분석 완료")
 
-    st.subheader("🧠 GPT-4o 기반 기술 분석")
+    st.subheader("🧠 GPT5-mini 기반 기술 분석")
     st.markdown(result)
 
     # 메모리 해제
     gc.collect()
+
 
 
