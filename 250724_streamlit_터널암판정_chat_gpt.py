@@ -54,7 +54,7 @@ def generate_gradcam(model, input_tensor, original_np):
     cam_image = show_cam_on_image(original_np, grayscale_cam, use_rgb=True)
     return cam_image
 
-# GPT-4o 분석
+# GPT-5-mini 분석
 def analyze_with_gpt4o(original_img: Image.Image, cam_img: Image.Image, label_idx_: int, class_name: str) -> str:
     original_base64 = pil_to_base64(original_img)
     cam_base64 = pil_to_base64(cam_img)
@@ -141,4 +141,5 @@ if uploaded_file:
 
     # 메모리 해제
     gc.collect()
+
 
