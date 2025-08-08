@@ -70,7 +70,7 @@ def analyze_with_gpt4o(original_img: Image.Image, cam_img: Image.Image, label_id
     )
 
     response = client.chat.completions.create(
-        model="o4-mini",
+        model="gpt-5-mini",
         messages=[
             {"role": "system", "content": "당신은 지질공학 및 암반공학 전문가입니다."},
             {
@@ -129,8 +129,8 @@ if uploaded_file:
     col1.image(image.resize((336, 336)), caption="원본 이미지", use_container_width=True)
     col2.image(cam_image, caption="Grad-CAM 시각화", use_container_width=True)
 
-    # GPT-4o 분석 실행
-    with st.spinner("o4-mini 분석 중..."):
+    # GPT-5-mini 분석 실행
+    with st.spinner("gpt5-mini 분석 중..."):
         cam_pil = Image.fromarray(cam_image).resize((336, 336))
         original_resized = image.resize((336, 336))
         result = analyze_with_gpt4o(original_resized, cam_pil, pred, rmr_class_name)
@@ -141,3 +141,4 @@ if uploaded_file:
 
     # 메모리 해제
     gc.collect()
+
