@@ -67,6 +67,7 @@ def analyze_with_gpt4o(original_img: Image.Image, cam_img: Image.Image, label_id
         "3. 암석 강도\n"
         "4. 구조적 안정성\n"
         "5. Grad-CAM 강조 영역의 지질학적 의미\n"
+        "추가적인 제한사항은 하지 말아줘"
     )
 
     response = client.chat.completions.create(
@@ -141,6 +142,7 @@ if uploaded_file:
 
     # 메모리 해제
     gc.collect()
+
 
 
 
