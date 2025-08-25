@@ -1,7 +1,9 @@
 import streamlit as st
 import os
 import torch
+import torch.nn.functional as F
 import numpy as np
+import pandas as pd
 from PIL import Image
 from torchvision import transforms
 from pytorch_grad_cam import GradCAM
@@ -25,7 +27,7 @@ client = OpenAI(
 # 모델 로드
 @st.cache_resource
 def load_model():
-    model = torch.load("./model_convnext_tiny2.pth", weights_only = False, map_location=torch.device('cpu') )
+    model = torch.load("./model_convnext_tiny2.pth", weights_only=False, map_location=torch.device('cpu'))
     model.eval()
     return model
 
@@ -54,20 +56,24 @@ def generate_gradcam(model, input_tensor, original_np):
     cam_image = show_cam_on_image(original_np, grayscale_cam, use_rgb=True)
     return cam_image
 
-# GPT-5-mini 분석
-def analyze_with_gpt4o(original_img: Image.Image, cam_img: Image.Image, label_idx_: int, class_name: str) -> str:
+# GPT5-mini 분석
+def analyze_with_gpt(original_img: Image.Image, cam_img: Image.Image, label_idx_: int, class_name: str) -> str:
     original_base64 = pil_to_base64(original_img)
     cam_base64 = pil_to_base64(cam_img)
 
     prompt = (
         f"이 이미지는 RMR 암반 분류 중 Class {label_idx_} ({class_name})로 예측되었습니다.\n"
-        "두 이미지를 참고하여 Grad-CAM 결과를 반영한 기술적 분석을 수행하십시오.\n"
+        "두 이미지를 참고하여 Grad-CAM 결과를 반영한 기술적 분석을 수행하십시오.\n\n"
+        "다음 항목별로 표 형태(Markdown Table)로 정리해서 답변하세요:\n"
         "1. 암반 표면 풍화 상태\n"
         "2. 절리 간격 및 방향성\n"
         "3. 암석 강도\n"
         "4. 구조적 안정성\n"
-        "5. Grad-CAM 강조 영역의 지질학적 의미\n"
-        "필요하시면 또는 원하신다면 어떤것을 작성해 드리겠습니다는 제외하고 답변"
+        "5. Grad-CAM 강조 영역의 지질학적 의미\n\n"
+        "출력은 반드시 다음과 같은 표 형식으로 해주세요:\n"
+        "| 항목 | 분석 결과 |\n"
+        "|------|-----------|\n"
+        "맨앞에는 위의 내용을 요약해서 출력해 주세요\n"
     )
 
     response = client.chat.completions.create(
@@ -110,8 +116,13 @@ if uploaded_file:
         input_tensor = preprocess(image).to(device)
         original_np = np.array(image.resize((224, 224))).astype(np.float32) / 255.0
 
-        # 예측
-        pred = torch.argmax(model(input_tensor), dim=1).item() + 1
+        # ===== 예측 (클래스별 확률 포함) =====
+        with torch.no_grad():
+            outputs = model(input_tensor)
+            probs = F.softmax(outputs, dim=1).cpu().numpy()[0]  # 클래스별 확률
+
+        pred = np.argmax(probs) + 1  # 가장 높은 확률 클래스 (인덱스 + 1)
+
         rmr_classes = {
             1: "Very Good Rock",
             2: "Good Rock",
@@ -130,11 +141,25 @@ if uploaded_file:
     col1.image(image.resize((336, 336)), caption="원본 이미지", use_container_width=True)
     col2.image(cam_image, caption="Grad-CAM 시각화", use_container_width=True)
 
+    # 클래스별 확률 표 출력
+    st.write("### 클래스별 확률 (%)")
+    prob_df = pd.DataFrame({
+        "Class": [f"Class {i}" for i in range(1, 6)],
+        "RMR 등급": [rmr_classes[i] for i in range(1, 6)],
+        "확률 (%)": [round(p*100, 2) for p in probs]
+    })
+    st.table(prob_df)
+
+    # 바 차트 시각화
+    st.bar_chart({
+        "확률 (%)": {f"Class {i} ({rmr_classes[i]})": p*100 for i, p in enumerate(probs, start=1)}
+    })
+
     # GPT-5-mini 분석 실행
-    with st.spinner("gpt5-mini 분석 중..."):
+    with st.spinner("GPT5-mini 분석 중..."):
         cam_pil = Image.fromarray(cam_image).resize((336, 336))
         original_resized = image.resize((336, 336))
-        result = analyze_with_gpt4o(original_resized, cam_pil, pred, rmr_class_name)
+        result = analyze_with_gpt(original_resized, cam_pil, pred, rmr_class_name)
         st.success("✅ 분석 완료")
 
     st.subheader("🧠 GPT5-mini 기반 기술 분석")
@@ -142,9 +167,3 @@ if uploaded_file:
 
     # 메모리 해제
     gc.collect()
-
-
-
-
-
-
