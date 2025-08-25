@@ -74,6 +74,7 @@ def analyze_with_gpt(original_img: Image.Image, cam_img: Image.Image, label_idx_
         "| 항목 | 분석 결과 |\n"
         "|------|-----------|\n"
         "맨앞에는 위의 내용을 요약해서 출력해 주세요\n"
+        "필요하시면 또는 원하신다면 어떤것을 작성해 드리겠습니다는 제외하고 답변"
     )
 
     response = client.chat.completions.create(
