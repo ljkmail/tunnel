@@ -1,3 +1,21 @@
+import subprocess
+import sys
+import importlib.metadata
+# --- Streamlit Cloud 전용 OpenCV 충돌 우회 코드 ---
+# pytorch_grad_cam이 강제로 설치한 일반 opencv-python을 찾아 삭제하고,
+# 서버 환경에서 에러가 없는 headless 버전으로 강제 교체합니다.
+# (반드시 GradCAM 라이브러리를 import 하기 전에 실행되어야 합니다.)
+try:
+    # 일반 opencv-python이 설치되어 있는지 확인
+    importlib.metadata.version('opencv-python')
+    print("일반 opencv-python이 감지되었습니다. Headless 버전으로 교체합니다...")
+    # 일반 버전과 기존 headless 버전을 모두 지우고
+    subprocess.run([sys.executable, "-m", "pip", "uninstall", "-y", "opencv-python", "opencv-python-headless"], capture_output=True)
+    # headless 버전만 깔끔하게 새로 설치합니다
+    subprocess.run([sys.executable, "-m", "pip", "install", "opencv-python-headless==4.8.1.78"], capture_output=True)
+except importlib.metadata.PackageNotFoundError:
+    pass
+# ------------------------------------------------
 import streamlit as st
 import os
 import torch
@@ -6,6 +24,7 @@ import numpy as np
 import pandas as pd
 from PIL import Image
 from torchvision import transforms
+# 위에서 우회 코드가 실행된 이후에 GradCAM을 불러오므로 에러가 발생하지 않습니다.
 from pytorch_grad_cam import GradCAM
 from pytorch_grad_cam.utils.image import show_cam_on_image
 from dotenv import load_dotenv
