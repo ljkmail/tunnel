@@ -1,21 +1,3 @@
-import subprocess
-import sys
-import importlib.metadata
-# --- Streamlit Cloud 전용 OpenCV 충돌 우회 코드 ---
-# pytorch_grad_cam이 강제로 설치한 일반 opencv-python을 찾아 삭제하고,
-# 서버 환경에서 에러가 없는 headless 버전으로 강제 교체합니다.
-# (반드시 GradCAM 라이브러리를 import 하기 전에 실행되어야 합니다.)
-try:
-    # 일반 opencv-python이 설치되어 있는지 확인
-    importlib.metadata.version('opencv-python')
-    print("일반 opencv-python이 감지되었습니다. Headless 버전으로 교체합니다...")
-    # 일반 버전과 기존 headless 버전을 모두 지우고
-    subprocess.run([sys.executable, "-m", "pip", "uninstall", "-y", "opencv-python", "opencv-python-headless"], capture_output=True)
-    # headless 버전만 깔끔하게 새로 설치합니다
-    subprocess.run([sys.executable, "-m", "pip", "install", "opencv-python-headless==4.8.1.78"], capture_output=True)
-except importlib.metadata.PackageNotFoundError:
-    pass
-# ------------------------------------------------
 import streamlit as st
 import os
 import torch
@@ -24,7 +6,6 @@ import numpy as np
 import pandas as pd
 from PIL import Image
 from torchvision import transforms
-# 위에서 우회 코드가 실행된 이후에 GradCAM을 불러오므로 에러가 발생하지 않습니다.
 from pytorch_grad_cam import GradCAM
 from pytorch_grad_cam.utils.image import show_cam_on_image
 from dotenv import load_dotenv
@@ -75,7 +56,7 @@ def generate_gradcam(model, input_tensor, original_np):
     cam_image = show_cam_on_image(original_np, grayscale_cam, use_rgb=True)
     return cam_image
 
-# GPT5-mini 분석
+# GPT 분석 (모델명 gpt-4o-mini 등으로 필요에 따라 수정하세요)
 def analyze_with_gpt(original_img: Image.Image, cam_img: Image.Image, label_idx_: int, class_name: str) -> str:
     original_base64 = pil_to_base64(original_img)
     cam_base64 = pil_to_base64(cam_img)
@@ -97,7 +78,7 @@ def analyze_with_gpt(original_img: Image.Image, cam_img: Image.Image, label_idx_
     )
 
     response = client.chat.completions.create(
-        model="gpt-5-mini",
+        model="gpt-5-mini", # 실제 사용 가능한 모델명인지 확인 필요 (예: gpt-4o-mini)
         messages=[
             {"role": "system", "content": "당신은 지질공학 및 암반공학 전문가입니다."},
             {
@@ -119,13 +100,8 @@ st.title("터널 안전성 AI🤖 분류 서비스")
 uploaded_file = st.file_uploader("터널 이미지를 업로드하세요", type=["jpg", "png", "jpeg"])
 
 if uploaded_file:
-    # 임시 파일 저장
-    temp_file = tempfile.NamedTemporaryFile(delete=False)
-    temp_file.write(uploaded_file.getvalue())
-    image_path = temp_file.name
-
-    # 이미지 로딩
-    image = Image.open(image_path).convert("RGB")
+    # 이미지 로딩 (디스크에 쓰지 않고 메모리에서 바로 처리)
+    image = Image.open(uploaded_file).convert("RGB")
     st.image(image, caption="업로드된 원본 이미지", use_container_width=True)
 
     # 모델 불러오기
@@ -136,12 +112,12 @@ if uploaded_file:
         input_tensor = preprocess(image).to(device)
         original_np = np.array(image.resize((224, 224))).astype(np.float32) / 255.0
 
-        # ===== 예측 (클래스별 확률 포함) =====
+        # ===== 예측 =====
         with torch.no_grad():
             outputs = model(input_tensor)
-            probs = F.softmax(outputs, dim=1).cpu().numpy()[0]  # 클래스별 확률
+            probs = F.softmax(outputs, dim=1).cpu().numpy()[0]
 
-        pred = np.argmax(probs) + 1  # 가장 높은 확률 클래스 (인덱스 + 1)
+        pred = np.argmax(probs) + 1
 
         rmr_classes = {
             1: "Very Good Rock",
@@ -171,18 +147,16 @@ if uploaded_file:
     st.table(prob_df)
 
     # 바 차트 시각화
-    st.bar_chart({
-        "확률 (%)": {f"Class {i} ({rmr_classes[i]})": p*100 for i, p in enumerate(probs, start=1)}
-    })
+    st.bar_chart(prob_df.set_index(prob_df["Class"] + " (" + prob_df["RMR 등급"] + ")")["확률 (%)"])
 
-    # GPT-5-mini 분석 실행
-    with st.spinner("GPT5-mini 분석 중..."):
+    # GPT 분석 실행
+    with st.spinner("AI 분석 중... (수 초 정도 소요될 수 있습니다)"):
         cam_pil = Image.fromarray(cam_image).resize((336, 336))
         original_resized = image.resize((336, 336))
         result = analyze_with_gpt(original_resized, cam_pil, pred, rmr_class_name)
         st.success("✅ 분석 완료")
 
-    st.subheader("🧠 GPT5-mini 기반 기술 분석")
+    st.subheader("🧠 AI 기반 기술 분석")
     st.markdown(result)
 
     # 메모리 해제
