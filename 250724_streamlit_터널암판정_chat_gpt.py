@@ -13,7 +13,6 @@ import base64
 import httpx
 from openai import OpenAI
 import urllib3
-import tempfile
 import gc
 
 # 환경 변수 로드 및 OpenAI 클라이언트 설정
